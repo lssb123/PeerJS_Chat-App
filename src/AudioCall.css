@@ -1,0 +1,63 @@
+.call-modal {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  .call-modal-content {
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .call-modal-content p {
+    margin: 0 0 15px 0;
+    font-size: 1.1em;
+  }
+  
+  .call-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+  }
+  
+  .call-actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    font-size: 1em;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  
+  .answer-btn {
+    background-color: #28a745; /* Green */
+  }
+  .answer-btn:hover {
+    opacity: 0.9;
+  }
+  
+  .reject-btn {
+    background-color: #dc3545; /* Red */
+  }
+  .reject-btn:hover {
+    opacity: 0.9;
+  }
+  
+  
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
