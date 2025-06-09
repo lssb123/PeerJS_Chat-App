@@ -28,7 +28,7 @@ function App() {
   useEffect(() => {
     if (currentUser) {
       const peer = new Peer(currentUser, {
-        host: '172.17.15.206',
+        host: 'https://peerjs-chat-app.onrender.com',
         port: 9000,
         path: '/',
       });
