@@ -6,7 +6,7 @@ import VideoCall from './VideoCall';
 import { formatBytes } from './utils'; // Helper for file sizes
 
 // Pre-defined list of users. In a real app, this would come from a database.
-const ALL_USERS = ['john', 'kate'];
+const ALL_USERS = ['Likhit', 'Deepika'];
 
 function App() {
   // User and Chat States
