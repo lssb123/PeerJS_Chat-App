@@ -111,24 +111,43 @@ body {
   
   /* --- Chat Container --- */
   .chat-container {
+    /* 1. Make this element grow to fill available space in the flex container */
+    flex-grow: 1; 
+  
+    /* 2. A crucial flexbox fix for scrollable content. It allows the container
+       to shrink properly before overflow is calculated. */
+    min-height: 0;
+  
+    /* 3. This is the magic property. It adds a vertical scrollbar ONLY 
+       when the content inside is taller than the container itself. */
+    overflow-y: auto; 
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     padding: 20px;
     display: flex;
     flex-direction: column;
-    height: 65vh;
   }
   .messages-list {
-    flex-grow: 1;
-    overflow-y: auto;
+    /* 1. Make this element grow to fill available space in the flex container */
+    flex-grow: 1; 
+  
+    /* 2. A crucial flexbox fix for scrollable content. It allows the container
+       to shrink properly before overflow is calculated. */
+    min-height: 0;
+  
+    /* 3. This is the magic property. It adds a vertical scrollbar ONLY 
+       when the content inside is taller than the container itself. */
+    overflow-y: auto; 
+  
+    /* --- Existing styles for appearance --- */
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     padding: 10px;
     border: 1px solid #eee;
     border-radius: 4px;
     margin-bottom: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
   }
   .message {
     padding: 10px 15px;
@@ -323,4 +342,98 @@ body {
   .file-status {
       font-style: italic;
       opacity: 0.9;
+  }
+
+
+  @media (max-width: 768px) {
+    .App {
+      padding: 10px;
+    }
+  
+    /* Make the header stack vertically if needed */
+    .app-header {
+      flex-direction: column;
+      gap: 15px;
+      padding: 15px;
+      text-align: center;
+    }
+    .app-header h1 {
+      font-size: 1.3em;
+    }
+  
+    /* This is the core of the mobile layout switch */
+    .main-container {
+      flex-direction: column;
+      height: calc(81vh - 150px); /* Adjust height for mobile screens */
+    }
+  
+    .users-list-panel, .chat-panel {
+      width: 100%;
+      flex-basis: auto; /* Allow panels to grow/shrink vertically */
+    }
+    
+    /* Show ONLY the chat panel when a chat IS active */
+    .main-container.chat-active .users-list-panel {
+      display: none;
+    }
+  
+    .chat-panel {
+      height: 100%; /* Make chat panel fill the available height */
+    }
+    
+    .chat-container {
+      height: 100%; /* Make chat container fill the panel */
+      padding: 10px;
+    }
+  
+    /* --- Mobile Chat Header and Back Button --- */
+    
+    /* Create a flex container for the back button and title */
+    .chat-header {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+    }
+    .chat-header h2 {
+      border-bottom: none;
+      padding-bottom: 0;
+      margin: 0;
+      font-size: 1.2em;
+    }
+    
+    /* Style the back button and make it visible */
+    .back-button {
+      display: inline-block;
+      background: none;
+      border: none;
+      font-size: 2em;
+      font-weight: bold;
+      color: #555;
+      margin-right: 15px;
+      padding: 0 10px;
+      cursor: pointer;
+    }
+  
+    /* Adjust message input for smaller screens */
+    .message-input-container {
+      gap: 5px;
+    }
+  
+    .message.me, .message.them {
+      max-width: 85%; /* Allow messages to be a bit wider */
+    }
+  
+    /* Adjust call notification pop-up for mobile */
+    .call-modal {
+      width: calc(100% - 20px);
+      right: 10px;
+      top: 10px;
+    }
+  }
+  
+  /* Hide the back button on desktop screens by default */
+  .back-button {
+    display: none;
   }
