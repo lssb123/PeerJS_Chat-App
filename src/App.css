@@ -221,3 +221,23 @@ body {
     background-color: #ccc;
     cursor: not-allowed;
   }
+
+
+  .audio-call-btn {
+    background-color: #17a2b8; /* Teal */
+  }
+  .audio-call-btn:hover {
+    background-color: #138496;
+  }
+  
+  .video-call-btn {
+    background-color: #28a745; /* Green */
+  }
+  .video-call-btn:hover {
+    background-color: #218838;
+  }
+  
+  .audio-call-btn:disabled, .video-call-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }

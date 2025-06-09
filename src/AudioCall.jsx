@@ -8,6 +8,7 @@ function AudioCall({
   onReject,
   onHangUp,
   remoteStream,
+  callType,
 }) {
   const remoteAudioRef = useRef(null);
 
@@ -27,8 +28,9 @@ function AudioCall({
     switch (callStatus) {
       case 'incoming':
         return (
-          <>
-            <p>Incoming call from <strong>{remoteUser}</strong></p>
+            <>
+            {/* Make the text dynamic based on callType */}
+            <p>Incoming {callType} call from <strong>{remoteUser}</strong></p>
             <div className="call-actions">
               <button onClick={onAnswer} className="answer-btn">Answer</button>
               <button onClick={onReject} className="reject-btn">Reject</button>

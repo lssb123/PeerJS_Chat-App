@@ -1,44 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Peer from 'peerjs';
 import './App.css';
-import AudioCall from './AudioCall'; // Import the new component
+import AudioCall from './AudioCall'; // Component for call notifications and audio-only calls
+import VideoCall from './VideoCall'; // Component for active video calls
 
+// Pre-defined list of users. In a real app, this would come from a database.
 const ALL_USERS = ['john', 'kate'];
 
 function App() {
-  // Existing States
+  // User and Chat States
   const [currentUser, setCurrentUser] = useState(null);
   const [connection, setConnection] = useState(null);
   const [chattingWith, setChattingWith] = useState(null);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   
-  // New States for Audio Call
+  // Call States
   const [call, setCall] = useState(null);
   const [callStatus, setCallStatus] = useState('idle'); // 'idle', 'outgoing', 'incoming', 'active'
+  const [callType, setCallType] = useState(null); // 'audio' or 'video'
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   
+  // Refs for persistent objects
   const peerInstance = useRef(null);
   const connectionRef = useRef(null);
   const lastMessageRef = useRef(null);
 
-  // --- EXISTING EFFECTS (with minor additions) ---
-
+  // Effect for PeerJS initialization and event handling
   useEffect(() => {
     if (currentUser) {
       const peer = new Peer(currentUser);
 
       peer.on('open', (id) => console.log('My peer ID is: ' + id));
-
+      
       peer.on('connection', (conn) => {
         console.log('Incoming data connection!');
         setupConnectionListeners(conn);
       });
 
-      // *** NEW: Listen for incoming calls ***
       peer.on('call', (incomingCall) => {
         console.log('Incoming call from', incomingCall.peer);
+        const type = incomingCall.metadata.type;
+        setCallType(type);
         setCallStatus('incoming');
         setCall(incomingCall);
       });
@@ -64,30 +68,40 @@ function App() {
     };
   }, [currentUser]);
 
+  // Effect to scroll chat to the latest message
   useEffect(() => {
     if (lastMessageRef.current) {
       lastMessageRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
   
-  // --- NEW CALL HANDLING FUNCTIONS ---
+  // --- Call Handling Logic ---
 
-  const getLocalMedia = async () => {
+  const getLocalMedia = async (isVideoCall) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: isVideoCall,
+      });
       setLocalStream(stream);
       return stream;
     } catch (error) {
       console.error('Failed to get local media', error);
+      alert('Could not access your camera/microphone. Please check permissions.');
       return null;
     }
   };
 
-  const startCall = async (targetUser) => {
-    console.log(`Starting call to ${targetUser}`);
-    const stream = await getLocalMedia();
+  const startCall = async (targetUser, type) => {
+    const isVideoCall = type === 'video';
+    console.log(`Starting ${type} call to ${targetUser}`);
+    
+    const stream = await getLocalMedia(isVideoCall);
     if (stream && peerInstance.current) {
-      const outgoingCall = peerInstance.current.call(targetUser, stream);
+      const options = { metadata: { type } };
+      const outgoingCall = peerInstance.current.call(targetUser, stream, options);
+      
+      setCallType(type);
       setCallStatus('outgoing');
       setCall(outgoingCall);
       setupCallListeners(outgoingCall);
@@ -95,8 +109,10 @@ function App() {
   };
   
   const answerCall = async () => {
-    console.log('Answering call...');
-    const stream = await getLocalMedia();
+    const isVideoCall = callType === 'video';
+    console.log(`Answering ${callType} call...`);
+
+    const stream = await getLocalMedia(isVideoCall);
     if (stream && call) {
       call.answer(stream);
       setCallStatus('active');
@@ -116,6 +132,7 @@ function App() {
     setRemoteStream(null);
     setLocalStream(null);
     setCallStatus('idle');
+    setCallType(null);
   };
 
   const setupCallListeners = (activeCall) => {
@@ -136,7 +153,7 @@ function App() {
     });
   };
 
-  // --- EXISTING FUNCTIONS ---
+  // --- Chat and User Management Logic ---
 
   const setupConnectionListeners = (conn) => {
     conn.on('data', (data) => {
@@ -148,16 +165,18 @@ function App() {
       setChattingWith(conn.peer);
     });
     conn.on('close', () => {
-        alert(`${conn.peer} has left the chat.`);
-        resetChatState();
+      alert(`${conn.peer} has left the chat.`);
+      resetChatState();
     });
   };
 
   const handleLogin = (username) => setCurrentUser(username);
 
   const handleLogout = () => {
-    endCall(); // End any active call on logout
-    if (connectionRef.current) connectionRef.current.close();
+    endCall(); // Ensure any active call is terminated on logout
+    if (connectionRef.current) {
+      connectionRef.current.close();
+    }
     setCurrentUser(null);
     resetChatState();
   };
@@ -192,6 +211,8 @@ function App() {
     }
   };
   
+  // --- Render Logic ---
+
   if (!currentUser) {
     return (
       <div className="App">
@@ -210,17 +231,37 @@ function App() {
     );
   }
 
+  const renderCallUI = () => {
+    if (callStatus === 'active' && callType === 'video') {
+      return (
+        <VideoCall 
+          remoteStream={remoteStream}
+          localStream={localStream}
+          onHangUp={endCall}
+          remoteUser={call?.peer}
+        />
+      );
+    }
+    
+    if (callStatus !== 'idle') {
+      return (
+        <AudioCall
+          callStatus={callStatus}
+          remoteUser={call?.peer}
+          onAnswer={answerCall}
+          onReject={endCall}
+          onHangUp={endCall}
+          remoteStream={remoteStream}
+          callType={callType}
+        />
+      );
+    }
+    return null;
+  };
+  
   return (
     <div className="App">
-      {/* *** NEW: Render the AudioCall component *** */}
-      <AudioCall
-        callStatus={callStatus}
-        remoteUser={call?.peer}
-        onAnswer={answerCall}
-        onReject={endCall} // Rejecting is the same as hanging up
-        onHangUp={endCall}
-        remoteStream={remoteStream}
-      />
+      {renderCallUI()}
 
       <header className="app-header">
         <h1>React PeerJS Chat & Call</h1>
@@ -238,12 +279,14 @@ function App() {
               <li key={user}>
                 <span>{user}</span>
                 <div className="user-actions">
-                  <button onClick={() => startChat(user)} disabled={!!chattingWith}>
+                  <button onClick={() => startChat(user)} disabled={!!chattingWith || callStatus !== 'idle'}>
                     Chat
                   </button>
-                  {/* *** NEW: Call button *** */}
-                  <button onClick={() => startCall(user)} disabled={callStatus !== 'idle'} className="call-btn">
-                    Call
+                  <button onClick={() => startCall(user, 'audio')} disabled={callStatus !== 'idle'} className="audio-call-btn">
+                    Audio
+                  </button>
+                  <button onClick={() => startCall(user, 'video')} disabled={callStatus !== 'idle'} className="video-call-btn">
+                    Video
                   </button>
                 </div>
               </li>
@@ -252,7 +295,6 @@ function App() {
         </div>
         
         <div className="chat-panel">
-          {/* ... existing chat UI ... */}
           {chattingWith ? (
             <div className="chat-container">
               <h2>Chatting with {chattingWith}</h2>
