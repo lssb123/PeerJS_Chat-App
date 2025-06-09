@@ -61,3 +61,24 @@
   .hangup-btn:hover {
     background-color: #c82333;
   }
+
+  /* ... existing styles ... */
+.button-group {
+    display: flex;
+    gap: 15px;
+}
+
+.control-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid white;
+  padding: 15px 30px;
+  border-radius: 50px;
+  font-size: 1.2em;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.control-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}

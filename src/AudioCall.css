@@ -49,6 +49,13 @@
   .reject-btn:hover {
     opacity: 0.9;
   }
+
+  .control-btn {
+    background-color: #2896f7; /* Gray */
+  }
+  .control-btn:hover {
+    background-color: #8cc6f3;
+  }
   
   
   @keyframes slideIn {

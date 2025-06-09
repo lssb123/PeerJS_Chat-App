@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Peer from 'peerjs';
 import './App.css';
-import AudioCall from './AudioCall'; // Component for call notifications and audio-only calls
-import VideoCall from './VideoCall'; // Component for active video calls
+import AudioCall from './AudioCall';
+import VideoCall from './VideoCall';
 
 // Pre-defined list of users. In a real app, this would come from a database.
 const ALL_USERS = ['john', 'kate'];
@@ -21,7 +21,8 @@ function App() {
   const [callType, setCallType] = useState(null); // 'audio' or 'video'
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
-  
+  const [isMuted, setIsMuted] = useState(false); // State for mute/unmute functionality
+
   // Refs for persistent objects
   const peerInstance = useRef(null);
   const connectionRef = useRef(null);
@@ -34,10 +35,7 @@ function App() {
 
       peer.on('open', (id) => console.log('My peer ID is: ' + id));
       
-      peer.on('connection', (conn) => {
-        console.log('Incoming data connection!');
-        setupConnectionListeners(conn);
-      });
+      peer.on('connection', (conn) => setupConnectionListeners(conn));
 
       peer.on('call', (incomingCall) => {
         console.log('Incoming call from', incomingCall.peer);
@@ -55,34 +53,23 @@ function App() {
 
       peerInstance.current = peer;
     } else {
-      if (peerInstance.current) {
-        peerInstance.current.destroy();
-        peerInstance.current = null;
-      }
+      if (peerInstance.current) peerInstance.current.destroy();
+      peerInstance.current = null;
     }
 
-    return () => {
-      if (peerInstance.current) {
-        peerInstance.current.destroy();
-      }
-    };
+    return () => { if (peerInstance.current) peerInstance.current.destroy(); };
   }, [currentUser]);
 
   // Effect to scroll chat to the latest message
   useEffect(() => {
-    if (lastMessageRef.current) {
-      lastMessageRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (lastMessageRef.current) lastMessageRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   
   // --- Call Handling Logic ---
 
   const getLocalMedia = async (isVideoCall) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: isVideoCall,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideoCall });
       setLocalStream(stream);
       return stream;
     } catch (error) {
@@ -94,13 +81,10 @@ function App() {
 
   const startCall = async (targetUser, type) => {
     const isVideoCall = type === 'video';
-    console.log(`Starting ${type} call to ${targetUser}`);
-    
     const stream = await getLocalMedia(isVideoCall);
     if (stream && peerInstance.current) {
       const options = { metadata: { type } };
       const outgoingCall = peerInstance.current.call(targetUser, stream, options);
-      
       setCallType(type);
       setCallStatus('outgoing');
       setCall(outgoingCall);
@@ -110,8 +94,6 @@ function App() {
   
   const answerCall = async () => {
     const isVideoCall = callType === 'video';
-    console.log(`Answering ${callType} call...`);
-
     const stream = await getLocalMedia(isVideoCall);
     if (stream && call) {
       call.answer(stream);
@@ -122,43 +104,42 @@ function App() {
 
   const endCall = () => {
     console.log('Ending call...');
-    if (call) {
-      call.close();
-    }
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-    }
+    if (call) call.close();
+    if (localStream) localStream.getTracks().forEach(track => track.stop());
     setCall(null);
     setRemoteStream(null);
     setLocalStream(null);
     setCallStatus('idle');
     setCallType(null);
+    setIsMuted(false); // Reset mute state on hang up
+  };
+  
+  const toggleMute = () => {
+    if (!localStream) return;
+    // Toggle the enabled state of each audio track in the local stream
+    localStream.getAudioTracks().forEach((track) => {
+      track.enabled = !track.enabled;
+    });
+    // Update the UI state to reflect the change
+    setIsMuted((current) => !current);
   };
 
   const setupCallListeners = (activeCall) => {
     activeCall.on('stream', (stream) => {
-      console.log('Received remote stream');
       setRemoteStream(stream);
       setCallStatus('active');
     });
-
-    activeCall.on('close', () => {
-      console.log('Call has been closed');
-      endCall();
-    });
-
+    activeCall.on('close', () => endCall());
     activeCall.on('error', (err) => {
       console.error('Call error:', err);
       endCall();
     });
   };
-
+  
   // --- Chat and User Management Logic ---
 
   const setupConnectionListeners = (conn) => {
-    conn.on('data', (data) => {
-      setMessages(prev => [...prev, { sender: conn.peer, content: data }]);
-    });
+    conn.on('data', (data) => setMessages(prev => [...prev, { sender: conn.peer, content: data }]));
     conn.on('open', () => {
       setConnection(conn);
       connectionRef.current = conn;
@@ -171,12 +152,10 @@ function App() {
   };
 
   const handleLogin = (username) => setCurrentUser(username);
-
+  
   const handleLogout = () => {
     endCall(); // Ensure any active call is terminated on logout
-    if (connectionRef.current) {
-      connectionRef.current.close();
-    }
+    if (connectionRef.current) connectionRef.current.close();
     setCurrentUser(null);
     resetChatState();
   };
@@ -205,10 +184,7 @@ function App() {
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
   
   // --- Render Logic ---
@@ -219,50 +195,29 @@ function App() {
         <header className="app-header"><h1>React PeerJS Chat & Call</h1></header>
         <div className="login-container">
           <h2>Select a User to Login</h2>
-          <div className="user-selection">
-            {ALL_USERS.map(user => (
-              <button key={user} onClick={() => handleLogin(user)}>
-                Login as {user.charAt(0).toUpperCase() + user.slice(1)}
-              </button>
-            ))}
-          </div>
+          <div className="user-selection">{ALL_USERS.map(user => <button key={user} onClick={() => handleLogin(user)}>Login as {user.charAt(0).toUpperCase() + user.slice(1)}</button>)}</div>
         </div>
       </div>
     );
   }
 
   const renderCallUI = () => {
+    // Render full-screen video call UI if active
     if (callStatus === 'active' && callType === 'video') {
-      return (
-        <VideoCall 
-          remoteStream={remoteStream}
-          localStream={localStream}
-          onHangUp={endCall}
-          remoteUser={call?.peer}
-        />
-      );
+      return <VideoCall remoteStream={remoteStream} localStream={localStream} onHangUp={endCall} remoteUser={call?.peer} isMuted={isMuted} onToggleMute={toggleMute} />;
     }
     
+    // Render the pop-up modal for incoming/outgoing calls and active audio calls
     if (callStatus !== 'idle') {
-      return (
-        <AudioCall
-          callStatus={callStatus}
-          remoteUser={call?.peer}
-          onAnswer={answerCall}
-          onReject={endCall}
-          onHangUp={endCall}
-          remoteStream={remoteStream}
-          callType={callType}
-        />
-      );
+      return <AudioCall callStatus={callStatus} remoteUser={call?.peer} onAnswer={answerCall} onReject={endCall} onHangUp={endCall} remoteStream={remoteStream} callType={callType} isMuted={isMuted} onToggleMute={toggleMute} />;
     }
+
     return null;
   };
   
   return (
     <div className="App">
       {renderCallUI()}
-
       <header className="app-header">
         <h1>React PeerJS Chat & Call</h1>
         <div className="user-info">
@@ -270,7 +225,6 @@ function App() {
           <button onClick={handleLogout} className="logout-btn">Logout</button>
         </div>
       </header>
-      
       <div className="main-container">
         <div className="users-list-panel">
           <h2>Other Users</h2>
@@ -279,52 +233,33 @@ function App() {
               <li key={user}>
                 <span>{user}</span>
                 <div className="user-actions">
-                  <button onClick={() => startChat(user)} disabled={!!chattingWith || callStatus !== 'idle'}>
-                    Chat
-                  </button>
-                  <button onClick={() => startCall(user, 'audio')} disabled={callStatus !== 'idle'} className="audio-call-btn">
-                    Audio
-                  </button>
-                  <button onClick={() => startCall(user, 'video')} disabled={callStatus !== 'idle'} className="video-call-btn">
-                    Video
-                  </button>
+                  <button onClick={() => startChat(user)} disabled={!!chattingWith || callStatus !== 'idle'}>Chat</button>
+                  <button onClick={() => startCall(user, 'audio')} disabled={callStatus !== 'idle'} className="audio-call-btn">Audio</button>
+                  <button onClick={() => startCall(user, 'video')} disabled={callStatus !== 'idle'} className="video-call-btn">Video</button>
                 </div>
               </li>
             ))}
           </ul>
         </div>
-        
         <div className="chat-panel">
           {chattingWith ? (
             <div className="chat-container">
               <h2>Chatting with {chattingWith}</h2>
               <div className="messages-list">
                 {messages.map((msg, index) => (
-                  <div 
-                    key={index} 
-                    className={`message ${msg.sender === currentUser ? 'me' : 'them'}`}
-                    ref={index === messages.length - 1 ? lastMessageRef : null}
-                  >
+                  <div key={index} className={`message ${msg.sender === currentUser ? 'me' : 'them'}`} ref={index === messages.length - 1 ? lastMessageRef : null}>
                     <span className="sender-label">{msg.sender === currentUser ? 'You' : msg.sender}</span>
                     {msg.content}
                   </div>
                 ))}
               </div>
               <div className="message-input-container">
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your message..."
-                  rows="3"
-                />
+                <textarea value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={handleKeyPress} placeholder="Type your message..." rows="3" />
                 <button onClick={sendMessage}>Send</button>
               </div>
             </div>
           ) : (
-            <div className="placeholder-text">
-                <p>Select a user from the list to start chatting or calling.</p>
-            </div>
+            <div className="placeholder-text"><p>Select a user to start chatting or calling.</p></div>
           )}
         </div>
       </div>

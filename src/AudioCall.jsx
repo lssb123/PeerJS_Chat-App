@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import './AudioCall.css'; // We'll create this CSS file next
+import './AudioCall.css';
 
 function AudioCall({
   callStatus,
@@ -9,27 +9,22 @@ function AudioCall({
   onHangUp,
   remoteStream,
   callType,
+  isMuted,       // new prop
+  onToggleMute,  // new prop
 }) {
   const remoteAudioRef = useRef(null);
 
-  // Effect to handle the remote audio stream
   useEffect(() => {
     if (remoteStream && remoteAudioRef.current) {
       remoteAudioRef.current.srcObject = remoteStream;
     }
   }, [remoteStream]);
 
-  // Don't render anything if there's no call activity
-  if (callStatus === 'idle') {
-    return null;
-  }
-
   const getCallContent = () => {
     switch (callStatus) {
       case 'incoming':
         return (
-            <>
-            {/* Make the text dynamic based on callType */}
+          <>
             <p>Incoming {callType} call from <strong>{remoteUser}</strong></p>
             <div className="call-actions">
               <button onClick={onAnswer} className="answer-btn">Answer</button>
@@ -47,25 +42,36 @@ function AudioCall({
           </>
         );
       case 'active':
-        return (
-          <>
-            <p>On a call with <strong>{remoteUser}</strong></p>
-            <div className="call-actions">
-              <button onClick={onHangUp} className="reject-btn">Hang Up</button>
-            </div>
-            {/* The audio element for the remote stream, hidden from the user */}
-            <audio ref={remoteAudioRef} autoPlay playsInline />
-          </>
-        );
+        // Only show this UI for active AUDIO calls
+        if (callType === 'audio') {
+            return (
+              <>
+                <p>On a call with <strong>{remoteUser}</strong></p>
+                <div className="call-actions">
+                  {/* --- NEW MUTE BUTTON --- */}
+                  <button onClick={onToggleMute} className="bg-primary hover:bg-primary/90">
+                    {isMuted ? 'Unmute' : 'Mute'}
+                  </button>
+                  <button onClick={onHangUp} className="reject-btn">Hang Up</button>
+                </div>
+                {/* Hidden audio element for the remote stream */}
+                <audio ref={remoteAudioRef} autoPlay playsInline />
+              </>
+            );
+        }
+        return null; // Don't show this modal for active video calls
       default:
         return null;
     }
   };
 
+  const content = getCallContent();
+  if (!content) return null;
+
   return (
     <div className="call-modal">
       <div className="call-modal-content">
-        {getCallContent()}
+        {content}
       </div>
     </div>
   );
